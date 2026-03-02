@@ -1,4 +1,4 @@
-yfinance==0.2.43
+yfinance==0.2.57
 pandas==2.2.2
 pyarrow==16.1.0
 s3fs==2024.6.1

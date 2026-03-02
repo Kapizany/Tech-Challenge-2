@@ -36,59 +36,74 @@ def sanitize_tickers(tickers: List[str]) -> List[str]:
     return list(dict.fromkeys(out)) 
 
 
-def download_daily_batched(tickers: List[str], lookback_days: str = "10d") -> pd.DataFrame:
+def download_daily_batched(tickers: List[str], lookback_days: str = "5d", batch_size: int = 10) -> pd.DataFrame:
     """
     Baixa um período curto (ex.: 10 dias) e pega o último pregão disponível por ticker.
     Isso evita falhar em fins de semana/feriados.
     """
-    tickers_str = " ".join(tickers)
+    if batch_size <= 0:
+        raise ValueError("batch_size precisa ser maior que zero.")
 
-    logging.info("Downloading daily quotes for %d tickers via yfinance...", len(tickers))
-
-    df = yf.download(
-        tickers=tickers_str,
-        period=lookback_days,
-        interval="1d",
-        group_by="ticker",
-        auto_adjust=False,
-        threads=True,
-        progress=False,
+    logging.info(
+        "Downloading daily quotes for %d tickers via yfinance (batch_size=%d)...",
+        len(tickers),
+        batch_size,
     )
 
-    if df is None or df.empty:
-        raise RuntimeError("yfinance retornou vazio (None/empty).")
-
+    total_batches = (len(tickers) + batch_size - 1) // batch_size
     rows = []
-    if isinstance(df.columns, pd.MultiIndex):
-        # normal: colunas multiindex quando há múltiplos tickers
-        for t in tickers:
-            # tenta extrair por nível (às vezes varia)
-            sub = None
-            try:
-                # formato comum: columns level 1 = ticker
-                sub = df.xs(t, axis=1, level=1, drop_level=False)
-                sub_simple = df.xs(t, axis=1, level=1)
-            except Exception:
-                # fallback: columns level 0 = ticker
-                sub = df.xs(t, axis=1, level=0, drop_level=False)
-                sub_simple = df.xs(t, axis=1, level=0)
+    for batch_idx, start in enumerate(range(0, len(tickers), batch_size), start=1):
+        batch = tickers[start:start + batch_size]
+        tickers_str = " ".join(batch)
+        logging.info(
+            "Downloading batch %d/%d (%d tickers)...",
+            batch_idx,
+            total_batches,
+            len(batch),
+        )
 
-            if sub_simple is None or sub_simple.empty:
-                continue
+        df = yf.download(
+            tickers=tickers_str,
+            period=lookback_days,
+            interval="1d",
+            group_by="ticker",
+            threads=True,
+            progress=True,
+        )
 
-            sub_simple = sub_simple.reset_index()
-            sub_simple["ticker"] = t
-            rows.append(sub_simple)
-    else:
-        # Caso de 1 ticker, não é o nosso caso, mas mantém robustez
-        df = df.reset_index()
-        df["ticker"] = tickers[0]
-        rows.append(df)
+        if df is None or df.empty:
+            logging.warning("Batch %d retornou vazio e será ignorado.", batch_idx)
+            continue
+
+        if isinstance(df.columns, pd.MultiIndex):
+            # normal: colunas multiindex quando há múltiplos tickers
+            for t in batch:
+                # tenta extrair por nível (às vezes varia)
+                sub_simple = None
+                try:
+                    # formato comum: columns level 1 = ticker
+                    sub_simple = df.xs(t, axis=1, level=1)
+                except Exception:
+                    # fallback: columns level 0 = ticker
+                    sub_simple = df.xs(t, axis=1, level=0)
+
+                if sub_simple is None or sub_simple.empty:
+                    continue
+
+                sub_simple = sub_simple.reset_index()
+                sub_simple["ticker"] = t
+                rows.append(sub_simple)
+        else:
+            # Caso de 1 ticker no batch
+            df = df.reset_index()
+            df["ticker"] = batch[0]
+            rows.append(df)
 
     if not rows:
-        raise RuntimeError("Não foi possível montar dataset tabular a partir do retorno do yfinance.")
+        raise RuntimeError("Não foi possível montar dataset tabular a partir dos batches do yfinance.")
 
     out = pd.concat(rows, ignore_index=True)
+    out = out.drop_duplicates(subset=["ticker", "Date"], keep="last")
 
     # Normaliza nomes de colunas esperadas do yfinance
     # Date + Open High Low Close Adj Close Volume
@@ -161,7 +176,7 @@ def run_with_retries(max_retries: int = 2, sleep_seconds: int = 180) -> None:
             attempt += 1
             logging.info("Attempt %d/%d", attempt, 1 + max_retries)
 
-            df = download_daily_batched(tickers, lookback_days="10d")
+            df = download_daily_batched(tickers, lookback_days="5d")
             if df.empty:
                 raise RuntimeError("Dataset final vazio após download e normalização.")
 
