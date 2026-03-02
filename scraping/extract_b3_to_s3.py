@@ -12,17 +12,10 @@ logging.basicConfig(
 
 
 
-TICKERS_100: List[str] = [
-    "PETR4.SA","VALE3.SA","ITUB4.SA","BBDC4.SA","ABEV3.SA","BBAS3.SA","WEGE3.SA","B3SA3.SA","MGLU3.SA","LREN3.SA",
-    "SUZB3.SA","JBSS3.SA","PRIO3.SA","RAIL3.SA","RENT3.SA","HAPV3.SA","RADL3.SA","GGBR4.SA","CSNA3.SA","EMBR3.SA",
-    "AZUL4.SA","GOLL4.SA","BRFS3.SA","MRFG3.SA","CVCB3.SA","AMER3.SA","VIVT3.SA","TIMS3.SA","TOTS3.SA","UGPA3.SA",
-    "EQTL3.SA","CPFE3.SA","TAEE11.SA","TRPL4.SA","CMIG4.SA","ENBR3.SA","ENGI11.SA","ELET3.SA","ELET6.SA","EGIE3.SA",
-    "CPLE6.SA","SBSP3.SA","SANB11.SA","BBDC3.SA","BBSE3.SA","IRBR3.SA","PSSA3.SA","QUAL3.SA","BEEF3.SA","SLCE3.SA",
-    "KLBN11.SA","BRKM5.SA","USIM5.SA","GOAU4.SA","APER3.SA","CCRO3.SA","ECOR3.SA","SMTO3.SA","JHSF3.SA","CYRE3.SA",
-    "MRVE3.SA","EZTC3.SA","TEND3.SA","DIRR3.SA","MULT3.SA","IGTI11.SA","ALSO3.SA","BRML3.SA","VBBR3.SA","CSAN3.SA",
-    "RRRP3.SA","YDUQ3.SA","COGN3.SA","SEER3.SA","ANIM3.SA","CASH3.SA","PETZ3.SA","ASAI3.SA","GMAT3.SA","MOVI3.SA",
-    "LCAM3.SA","ARZZ3.SA","SOMA3.SA","AURE3.SA","ALPA4.SA","VAMO3.SA","BLAU3.SA","HYPE3.SA","FLRY3.SA","RDOR3.SA",
-    "DXCO3.SA","CIEL3.SA","NTCO3.SA","PCAR3.SA","CRFB3.SA","MYPK3.SA","POMO4.SA","RAPT4.SA","STBP3.SA","ODPV3.SA"
+TICKERS_30: List[str] = [
+    "PETR4.SA","VALE3.SA","ITUB4.SA","BBDC4.SA","ABEV3.SA","BBAS3.SA","WEGE3.SA","B3SA3.SA","ELET3.SA","CIEL3.SA",
+    "RENT3.SA","PRIO3.SA","SUZB3.SA","RAIL3.SA","JBSS3.SA","VIVT3.SA","TIMS3.SA","TOTS3.SA","UGPA3.SA","EQTL3.SA",
+    "CPFE3.SA","TAEE11.SA","CMIG4.SA","EGIE3.SA","SBSP3.SA","SANB11.SA","BBSE3.SA","EMBR3.SA","GGBR4.SA","RADL3.SA"
 ]
 
 
@@ -36,7 +29,7 @@ def sanitize_tickers(tickers: List[str]) -> List[str]:
     return list(dict.fromkeys(out)) 
 
 
-def download_daily_batched(tickers: List[str], lookback_days: str = "5d", batch_size: int = 10) -> pd.DataFrame:
+def download_daily_batched(tickers: List[str], lookback_days: str = "5d", batch_size: int = 6) -> pd.DataFrame:
     """
     Baixa um período curto (ex.: 10 dias) e pega o último pregão disponível por ticker.
     Isso evita falhar em fins de semana/feriados.
@@ -166,9 +159,9 @@ def run_with_retries(max_retries: int = 2, sleep_seconds: int = 180) -> None:
     if not s3_bucket:
         raise ValueError("Defina a variável de ambiente RAW_BUCKET (nome do bucket S3).")
 
-    tickers = sanitize_tickers(TICKERS_100)
-    if len(tickers) != 100:
-        logging.warning("Lista final de tickers tem %d itens (esperado 100).", len(tickers))
+    tickers = sanitize_tickers(TICKERS_30)
+    if len(tickers) != 30:
+        logging.warning("Lista final de tickers tem %d itens (esperado 30).", len(tickers))
 
     attempt = 0
     while True:
