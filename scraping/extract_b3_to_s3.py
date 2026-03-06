@@ -1,7 +1,7 @@
 import os
 import time
 import logging
-from typing import List, Optional
+from typing import Any, List, Optional
 import pandas as pd
 import yfinance as yf
 
@@ -19,6 +19,21 @@ TICKERS_30: List[str] = [
 ]
 
 
+def build_yf_session() -> Optional[Any]:
+    """
+    Cria sessão HTTP com fingerprint de browser para reduzir throttling.
+    """
+    try:
+        from curl_cffi import requests as curl_requests
+        return curl_requests.Session(impersonate="chrome")
+    except Exception:
+        logging.warning(
+            "curl_cffi indisponível. Seguindo sem sessão customizada. "
+            "Instale com: pip install curl_cffi"
+        )
+        return None
+
+
 def sanitize_tickers(tickers: List[str]) -> List[str]:
     out = []
     for t in tickers:
@@ -29,7 +44,12 @@ def sanitize_tickers(tickers: List[str]) -> List[str]:
     return list(dict.fromkeys(out)) 
 
 
-def download_daily_batched(tickers: List[str], lookback_days: str = "5d", batch_size: int = 6) -> pd.DataFrame:
+def download_daily_batched(
+    tickers: List[str],
+    lookback_days: str = "5d",
+    batch_size: int = 6,
+    session: Optional[Any] = None,
+) -> pd.DataFrame:
     """
     Baixa um período curto (ex.: 10 dias) e pega o último pregão disponível por ticker.
     Isso evita falhar em fins de semana/feriados.
@@ -62,6 +82,7 @@ def download_daily_batched(tickers: List[str], lookback_days: str = "5d", batch_
             group_by="ticker",
             threads=True,
             progress=True,
+            session=session,
         )
 
         if df is None or df.empty:
@@ -162,6 +183,7 @@ def run_with_retries(max_retries: int = 2, sleep_seconds: int = 180) -> None:
     tickers = sanitize_tickers(TICKERS_30)
     if len(tickers) != 30:
         logging.warning("Lista final de tickers tem %d itens (esperado 30).", len(tickers))
+    yf_session = build_yf_session()
 
     attempt = 0
     while True:
@@ -169,7 +191,7 @@ def run_with_retries(max_retries: int = 2, sleep_seconds: int = 180) -> None:
             attempt += 1
             logging.info("Attempt %d/%d", attempt, 1 + max_retries)
 
-            df = download_daily_batched(tickers, lookback_days="5d")
+            df = download_daily_batched(tickers, lookback_days="5d", session=yf_session)
             if df.empty:
                 raise RuntimeError("Dataset final vazio após download e normalização.")
 
