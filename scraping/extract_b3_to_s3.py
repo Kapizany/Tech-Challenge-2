@@ -152,11 +152,21 @@ def write_parquet_partitioned_daily(df: pd.DataFrame, s3_bucket: str, s3_prefix:
     if "dt" not in df.columns:
         raise ValueError("df precisa ter coluna dt para particionamento diário.")
 
+    def _write_compat_parquet(frame: pd.DataFrame, path: str) -> None:
+        # Glue/Spark pode falhar com TIMESTAMP em nanos. Forçamos micros (us).
+        frame.to_parquet(
+            path,
+            index=False,
+            engine="pyarrow",
+            coerce_timestamps="us",
+            allow_truncated_timestamps=True,
+        )
+
     dts = sorted(df["dt"].unique().tolist())
     if len(dts) == 1:
         dt = dts[0]
         path = f"s3://{s3_bucket}/{s3_prefix}/dt={dt}/quotes.parquet"
-        df.to_parquet(path, index=False)
+        _write_compat_parquet(df, path)
         return path
 
     # fallback multi-dt
@@ -164,7 +174,7 @@ def write_parquet_partitioned_daily(df: pd.DataFrame, s3_bucket: str, s3_prefix:
     for dt in dts:
         part = df[df["dt"] == dt].copy()
         path = f"s3://{s3_bucket}/{s3_prefix}/dt={dt}/quotes.parquet"
-        part.to_parquet(path, index=False)
+        _write_compat_parquet(part, path)
         last_path = path
     return last_path
 
