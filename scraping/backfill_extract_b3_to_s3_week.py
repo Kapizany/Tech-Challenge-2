@@ -69,26 +69,31 @@ def _default_start_date(today: date) -> date:
     return today - timedelta(days=today.weekday())
 
 
-def _download_range_batched(
+def _iter_dates(start_date: date, end_date: date):
+    current_date = start_date
+    while current_date <= end_date:
+        yield current_date
+        current_date += timedelta(days=1)
+
+
+def _download_one_day_batched(
     tickers: list[str],
-    start_date: date,
-    end_date: date,
+    target_date: date,
     batch_size: int,
     session,
-) -> pd.DataFrame:
+) -> pd.DataFrame | None:
     if batch_size <= 0:
         raise ValueError("batch_size precisa ser maior que zero.")
 
-    start_str = start_date.isoformat()
-    end_exclusive = (end_date + timedelta(days=1)).isoformat()
+    start_str = target_date.isoformat()
+    end_exclusive = (target_date + timedelta(days=1)).isoformat()
     total_batches = (len(tickers) + batch_size - 1) // batch_size
     rows: list[pd.DataFrame] = []
 
     logging.info(
-        "Downloading quotes for %d tickers between %s and %s (batch_size=%d)...",
+        "Downloading quotes for %d tickers on %s (batch_size=%d)...",
         len(tickers),
         start_str,
-        end_date.isoformat(),
         batch_size,
     )
 
@@ -136,7 +141,8 @@ def _download_range_batched(
             rows.append(df)
 
     if not rows:
-        raise RuntimeError("Nenhum dado retornado pelo yfinance para o intervalo solicitado.")
+        logging.warning("Nenhum dado retornado pelo yfinance para dt=%s.", target_date.isoformat())
+        return None
 
     out = pd.concat(rows, ignore_index=True)
     out = out.drop_duplicates(subset=["ticker", "Date"], keep="last")
@@ -168,6 +174,13 @@ def _download_range_batched(
         col for col in out.columns if col not in preferred_cols
     ]
     out = out[cols].sort_values(["dt", "ticker", "Date"]).reset_index(drop=True)
+
+    # Para o backfill, o script precisa produzir exatamente a particao da data alvo.
+    out = out[out["dt"] == target_date.isoformat()].reset_index(drop=True)
+    if out.empty:
+        logging.warning("Sem linhas para dt=%s apos normalizacao.", target_date.isoformat())
+        return None
+
     return out
 
 
@@ -220,24 +233,21 @@ def main() -> None:
     tickers = sanitize_tickers(TICKERS_30)
     yf_session = build_yf_session()
 
-    df = _download_range_batched(
-        tickers=tickers,
-        start_date=start_date,
-        end_date=end_date,
-        batch_size=args.batch_size,
-        session=yf_session,
-    )
+    processed_dates: list[str] = []
+    skipped_dates: list[str] = []
 
-    found_dates = sorted(df["dt"].unique().tolist())
-    logging.info(
-        "Datas retornadas pelo yfinance no intervalo %s..%s: %s",
-        start_date.isoformat(),
-        end_date.isoformat(),
-        ", ".join(found_dates),
-    )
+    for current_date in _iter_dates(start_date, end_date):
+        day_df = _download_one_day_batched(
+            tickers=tickers,
+            target_date=current_date,
+            batch_size=args.batch_size,
+            session=yf_session,
+        )
+        if day_df is None:
+            skipped_dates.append(current_date.isoformat())
+            continue
 
-    for target_dt in found_dates:
-        day_df = df[df["dt"] == target_dt].copy()
+        target_dt = current_date.isoformat()
         _write_one_day_with_retries(
             day_df=day_df,
             s3_bucket=s3_bucket,
@@ -246,6 +256,13 @@ def main() -> None:
             max_retries=args.max_retries,
             sleep_seconds=args.sleep_seconds,
         )
+        processed_dates.append(target_dt)
+
+    logging.info(
+        "Resumo do backfill | processadas=%s | sem_dados=%s",
+        ", ".join(processed_dates) if processed_dates else "(nenhuma)",
+        ", ".join(skipped_dates) if skipped_dates else "(nenhuma)",
+    )
 
 
 if __name__ == "__main__":

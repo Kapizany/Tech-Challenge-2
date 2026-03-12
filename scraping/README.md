@@ -36,9 +36,10 @@ Comportamento esperado:
 Script de reprocessamento por intervalo de datas.
 
 - Reutiliza a mesma lista de tickers e a mesma rotina de escrita do script principal.
-- Baixa o historico diario dentro de um intervalo.
-- Separa os dados por `dt` e grava um `quotes.parquet` por dia.
+- Processa o intervalo dia a dia.
+- Faz um upload separado por data, gerando um `quotes.parquet` por dia.
 - Faz retry por dia durante a escrita no S3.
+- Registra no log quais datas foram processadas e quais ficaram sem dados.
 
 Argumentos:
 
@@ -70,6 +71,10 @@ Quando usar:
 - Falha de ingestao em dias anteriores.
 - Reprocessamento de uma semana especifica.
 - Repovoamento de particoes `raw/dt=...` ausentes.
+
+Observacao:
+
+- O processamento dia a dia favorece um evento S3 por particao criada, o que facilita o disparo da Lambda para cada data reprocessada.
 
 ### `fix_raw_parquet_timestamps.py`
 
