@@ -4,9 +4,19 @@ from datetime import datetime
 
 from awsglue.utils import getResolvedOptions
 from awsglue.context import GlueContext
+from awsglue.dynamicframe import DynamicFrame
 from pyspark.context import SparkContext
 from pyspark.sql import functions as F
 from pyspark.sql.window import Window
+
+
+def get_optional_arg(name: str, default: str) -> str:
+    arg_name = f"--{name}"
+    if arg_name in sys.argv:
+        idx = sys.argv.index(arg_name)
+        if idx + 1 < len(sys.argv):
+            return sys.argv[idx + 1]
+    return default
 
 
 # -----------------------------
@@ -17,6 +27,8 @@ args = getResolvedOptions(sys.argv, ["S3_ROOT", "INPUT_S3_URI", "LOOKBACK_DAYS"]
 S3_ROOT = args["S3_ROOT"].rstrip("/")
 INPUT_S3_URI = args["INPUT_S3_URI"]
 LOOKBACK_DAYS = int(args["LOOKBACK_DAYS"])
+CATALOG_DATABASE = get_optional_arg("CATALOG_DATABASE", "default")
+CATALOG_TABLE = get_optional_arg("CATALOG_TABLE", "b3_refined")
 
 RAW_S3_ROOT = f"{S3_ROOT}/raw/"
 REFINED_S3_PATH = f"{S3_ROOT}/refined/"
@@ -64,6 +76,8 @@ log(f"RAW_S3_ROOT={RAW_S3_ROOT}")
 log(f"REFINED_S3_PATH={REFINED_S3_PATH}")
 log(f"INPUT_S3_URI={INPUT_S3_URI}")
 log(f"LOOKBACK_DAYS={LOOKBACK_DAYS}")
+log(f"CATALOG_DATABASE={CATALOG_DATABASE}")
+log(f"CATALOG_TABLE={CATALOG_TABLE}")
 
 assert_true(LOOKBACK_DAYS >= 7, "LOOKBACK_DAYS must be >= 7 to compute MA7 and lag reliably.")
 
@@ -308,13 +322,24 @@ df_refined.show(10, truncate=False)
 # -----------------------------
 # 6) Write refined partitions (dt -> ticker -> dataset)
 # -----------------------------
-log("Writing refined parquet partitions...")
-(
-    df_refined.write
-      .mode("overwrite")
-      .partitionBy("dt", "ticker", "dataset")
-      .parquet(REFINED_S3_PATH)
+log("Writing refined parquet partitions and updating Glue Catalog...")
+refined_dyf = DynamicFrame.fromDF(df_refined, glueContext, "refined_dyf")
+
+sink = glueContext.getSink(
+    path=REFINED_S3_PATH,
+    connection_type="s3",
+    updateBehavior="UPDATE_IN_DATABASE",
+    partitionKeys=["dt", "ticker", "dataset"],
+    enableUpdateCatalog=True,
+    transformation_ctx="refined_sink",
 )
+sink.setCatalogInfo(
+    catalogDatabase=CATALOG_DATABASE,
+    catalogTableName=CATALOG_TABLE,
+)
+sink.setFormat("glueparquet")
+sink.writeFrame(refined_dyf)
 
 log(f"SUCCESS: wrote refined to {REFINED_S3_PATH} partitioned by dt/ticker/dataset")
+log(f"SUCCESS: updated Glue Catalog table {CATALOG_DATABASE}.{CATALOG_TABLE}")
 log(f"SUCCESS: processed INPUT_S3_URI={INPUT_S3_URI}")

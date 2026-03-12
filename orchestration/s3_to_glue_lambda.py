@@ -34,6 +34,8 @@ def _build_s3_root(bucket: str) -> str:
 def lambda_handler(event, context):
     glue_job_name = os.environ["GLUE_JOB_NAME"]
     lookback_days = os.environ.get("LOOKBACK_DAYS", "7")
+    catalog_database = os.environ.get("CATALOG_DATABASE", "default")
+    catalog_table = os.environ.get("CATALOG_TABLE", "b3_refined")
 
     records = event.get("Records", [])
     if not records:
@@ -64,6 +66,8 @@ def lambda_handler(event, context):
                 "--S3_ROOT": s3_root,
                 "--INPUT_S3_URI": input_s3_uri,
                 "--LOOKBACK_DAYS": lookback_days,
+                "--CATALOG_DATABASE": catalog_database,
+                "--CATALOG_TABLE": catalog_table,
             }
 
             resp = glue.start_job_run(JobName=glue_job_name, Arguments=args)

@@ -21,6 +21,8 @@ export BUCKET=capizani-techchallenge
 export GLUE_JOB_NAME="Refine B3 data"
 export LAMBDA_NAME=s3-raw-to-glue-trigger
 export LAMBDA_ROLE_NAME=lambda-s3-glue-role
+export CATALOG_DATABASE=default
+export CATALOG_TABLE=b3_refined
 ```
 
 Observacao:
@@ -113,7 +115,7 @@ aws lambda create-function \
   --zip-file fileb:///tmp/s3_to_glue_lambda.zip \
   --timeout 60 \
   --memory-size 256 \
-  --environment "Variables={GLUE_JOB_NAME=$GLUE_JOB_NAME,S3_ROOT=s3://$BUCKET,LOOKBACK_DAYS=7}"
+  --environment "Variables={GLUE_JOB_NAME=$GLUE_JOB_NAME,S3_ROOT=s3://$BUCKET,LOOKBACK_DAYS=7,CATALOG_DATABASE=$CATALOG_DATABASE,CATALOG_TABLE=$CATALOG_TABLE}"
 ```
 
 Se a funcao ja existir:
@@ -130,7 +132,7 @@ Atualize configuracao e variaveis quando necessario:
 aws lambda update-function-configuration \
   --function-name "$LAMBDA_NAME" \
   --handler s3_to_glue_lambda.lambda_handler \
-  --environment "Variables={GLUE_JOB_NAME=$GLUE_JOB_NAME,S3_ROOT=s3://$BUCKET,LOOKBACK_DAYS=7}"
+  --environment "Variables={GLUE_JOB_NAME=$GLUE_JOB_NAME,S3_ROOT=s3://$BUCKET,LOOKBACK_DAYS=7,CATALOG_DATABASE=$CATALOG_DATABASE,CATALOG_TABLE=$CATALOG_TABLE}"
 ```
 
 ## 3) Permitir que o S3 invoque a Lambda
@@ -192,6 +194,14 @@ Verifique os ultimos runs do Glue:
 aws glue get-job-runs --job-name "$GLUE_JOB_NAME" --max-results 5
 ```
 
+Verifique a tabela catalogada:
+
+```bash
+aws glue get-table \
+  --database-name "$CATALOG_DATABASE" \
+  --name "$CATALOG_TABLE"
+```
+
 ## Troubleshooting
 
 ### Erro: `The provided execution role does not have permissions to call CreateNetworkInterface on EC2`
@@ -227,6 +237,17 @@ Correcao:
 - Re-renderize `orchestration/policy-lambda-start-glue.json` com `AWS_REGION`, `AWS_ACCOUNT_ID` e `GLUE_JOB_NAME`.
 - Reaplique a policy inline na role da Lambda.
 
+### Erro: `AccessDeniedException` ao atualizar tabela ou particao no Glue Catalog
+
+Causa:
+
+- A role do Glue Job nao tem permissao para criar ou atualizar objetos no Data Catalog.
+
+Correcao:
+
+- Adicione permissoes como `glue:GetDatabase`, `glue:GetTable`, `glue:CreateTable`, `glue:UpdateTable`, `glue:GetPartition`, `glue:BatchCreatePartition` e `glue:UpdatePartition` na role usada pelo job Glue.
+- Confirme tambem permissao de escrita em `s3://<bucket>/refined/`.
+
 ### Erro: `MalformedPolicyDocument`
 
 Causa:
@@ -247,3 +268,4 @@ jq . /tmp/policy-lambda-start-glue.rendered.json
 - O handler faz a validacao final e so processa o padrao `raw/dt=YYYY-MM-DD/quotes.parquet`.
 - Reenvios do mesmo arquivo podem gerar mais de um evento e mais de um `JobRun`.
 - O argumento `LOOKBACK_DAYS` e enviado pela Lambda e usado pelo Glue para montar a janela historica de calculo.
+- O Glue Job tambem pode receber `CATALOG_DATABASE` e `CATALOG_TABLE`; por default ele usa `default.b3_refined`.
