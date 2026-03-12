@@ -1,0 +1,27 @@
+{
+  "LambdaFunctionConfigurations": [
+    {
+      "Id": "raw-quotes-to-glue",
+      "LambdaFunctionArn": "LAMBDA_ARN",
+      "Events": [
+        "s3:ObjectCreated:Put",
+        "s3:ObjectCreated:CompleteMultipartUpload",
+        "s3:ObjectCreated:Copy"
+      ],
+      "Filter": {
+        "Key": {
+          "FilterRules": [
+            {
+              "Name": "prefix",
+              "Value": "raw/"
+            },
+            {
+              "Name": "suffix",
+              "Value": "quotes.parquet"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
