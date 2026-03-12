@@ -16,7 +16,7 @@ args = getResolvedOptions(sys.argv, ["S3_ROOT", "INPUT_S3_URI", "LOOKBACK_DAYS"]
 
 S3_ROOT = args["S3_ROOT"].rstrip("/")
 INPUT_S3_URI = args["INPUT_S3_URI"]
-LOOKBACK_DAYS = 7
+LOOKBACK_DAYS = int(args["LOOKBACK_DAYS"])
 
 RAW_S3_ROOT = f"{S3_ROOT}/raw/"
 REFINED_S3_PATH = f"{S3_ROOT}/refined/"

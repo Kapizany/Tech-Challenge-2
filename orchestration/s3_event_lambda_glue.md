@@ -246,4 +246,4 @@ jq . /tmp/policy-lambda-start-glue.rendered.json
 - O filtro do bucket em `orchestration/s3-notification.json` captura qualquer `raw/*quotes.parquet`.
 - O handler faz a validacao final e so processa o padrao `raw/dt=YYYY-MM-DD/quotes.parquet`.
 - Reenvios do mesmo arquivo podem gerar mais de um evento e mais de um `JobRun`.
-- O argumento `LOOKBACK_DAYS` e enviado pela Lambda; se o Glue ignorar esse valor, o ajuste precisa ser feito no ETL.
+- O argumento `LOOKBACK_DAYS` e enviado pela Lambda e usado pelo Glue para montar a janela historica de calculo.
