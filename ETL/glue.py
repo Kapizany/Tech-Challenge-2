@@ -217,9 +217,9 @@ log(f"RAW workset rows in lookback window: {work_count}")
 assert_true("closing_price" in df_work.columns, "RAW history must contain 'closing_price' (or 'close' in raw).")
 
 # -----------------------------
-# 3) Requirement C: date-based calculations
+# 3) Calculations
 # -----------------------------
-log("Computing lag + MA7 (Requirement C)...")
+log("Computing lag + MA7 ...")
 w = Window.partitionBy("ticker").orderBy("trade_date")
 
 df_work = df_work.withColumn("prev_close", F.lag("closing_price").over(w))
@@ -241,9 +241,9 @@ assert_true(quotes_count > 0, f"No rows found for processing dt={processing_dt} 
 log(f"Quotes rows for dt={processing_dt}: {quotes_count}")
 
 # -----------------------------
-# 4) Requirement A: Aggregation (daily_agg)
+# 4) Daily Aggregation
 # -----------------------------
-log("Computing daily aggregation (Requirement A)...")
+log("Computing daily aggregation...")
 df_agg = (
     df_quotes.groupBy("dt", "year", "month", "day", "ticker")
       .agg(

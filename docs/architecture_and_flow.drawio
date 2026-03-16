@@ -1,0 +1,93 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36" version="29.3.2">
+  <diagram id="architecture-flow" name="Arquitetura e Fluxo">
+    <mxGraphModel dx="1587" dy="733" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#1F2937;" value="Tech Challenge Fase 2 - Arquitetura e Fluxo" vertex="1">
+          <mxGeometry height="30" width="520" x="40" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#4B5563;" value="Pipeline batch para dados diarios da B3 com scraping, evento S3, Lambda, Glue, Catalog e Athena" vertex="1">
+          <mxGeometry height="20" width="760" x="40" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-scraping" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontStyle=1;verticalAlign=top;align=left;spacingTop=10;spacingLeft=12;fontColor=#92400E;" value="Scraping" vertex="1">
+          <mxGeometry height="220" width="180" x="40" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-raw" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#2563EB;fontStyle=1;verticalAlign=top;align=left;spacingTop=10;spacingLeft=12;fontColor=#1D4ED8;" value="Camada bruta" vertex="1">
+          <mxGeometry height="220" width="220" x="380" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-orchestration" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontStyle=1;verticalAlign=top;align=left;spacingTop=10;spacingLeft=12;fontColor=#6D28D9;" value="Orquestracao" vertex="1">
+          <mxGeometry height="220" width="280" x="710" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-etl" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DCFCE7;strokeColor=#16A34A;fontStyle=1;verticalAlign=top;align=left;spacingTop=10;spacingLeft=12;fontColor=#15803D;" value="ETL e camada refinada" vertex="1">
+          <mxGeometry height="260" width="340" x="710" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-consumption" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE7F3;strokeColor=#DB2777;fontStyle=1;verticalAlign=top;align=left;spacingTop=10;spacingLeft=12;fontColor=#BE185D;" value="Catalogacao e consumo" vertex="1">
+          <mxGeometry height="290" width="330" x="230" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="scraping" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF7ED;strokeColor=#EA580C;fontSize=13;" value="Script scraping&#xa;extract_b3_to_s3.py&#xa;&#xa;Fonte: yfinance" vertex="1">
+          <mxGeometry height="100" width="140" x="60" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="raw-s3" parent="1" style="shape=process;whiteSpace=wrap;html=1;rounded=1;fillColor=#EFF6FF;strokeColor=#2563EB;fontSize=13;" value="Amazon S3 raw/&#xa;dt=YYYY-MM-DD/quotes.parquet&#xa;&#xa;Parquet + particao diaria" vertex="1">
+          <mxGeometry height="110" width="160" x="410" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="event" parent="1" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fillColor=#F5F3FF;strokeColor=#7C3AED;fontSize=13;" value="S3 Event Notification" vertex="1">
+          <mxGeometry height="80" width="110" x="740" y="325" as="geometry" />
+        </mxCell>
+        <mxCell id="lambda" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FAF5FF;strokeColor=#9333EA;fontSize=13;" value="AWS Lambda&#xa;s3_to_glue_lambda.py&#xa;&#xa;Valida path e chama&#xa;glue.start_job_run(...)" vertex="1">
+          <mxGeometry height="120" width="100" x="870" y="305" as="geometry" />
+        </mxCell>
+        <mxCell id="glue" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0FDF4;strokeColor=#16A34A;fontSize=13;" value="AWS Glue Job&#xa;ETL/glue.py&#xa;&#xa;Le raw, aplica agregacao,&#xa;renomeacao e calculos temporais" vertex="1">
+          <mxGeometry height="120" width="140" x="720" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="refined-s3" parent="1" style="shape=process;whiteSpace=wrap;html=1;rounded=1;fillColor=#F0FDF4;strokeColor=#22C55E;fontSize=13;" value="Amazon S3 refined/&#xa;&#xa;Particoes: dt, ticker, dataset&#xa;Datasets: quotes, daily_agg" vertex="1">
+          <mxGeometry height="140" width="130" x="910" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="catalog" parent="1" style="shape=process;whiteSpace=wrap;html=1;rounded=1;fillColor=#FDF2F8;strokeColor=#DB2777;fontSize=13;" value="Glue Catalog&#xa;&#xa;database: default&#xa;table: b3_refined&#xa;enableUpdateCatalog=True" vertex="1">
+          <mxGeometry height="140" width="110" x="260" y="495" as="geometry" />
+        </mxCell>
+        <mxCell id="athena" parent="1" style="shape=process;whiteSpace=wrap;html=1;rounded=1;fillColor=#FFF1F2;strokeColor=#E11D48;fontSize=13;" value="Amazon Athena&#xa;&#xa;Consulta SQL da&#xa;camada refinada" vertex="1">
+          <mxGeometry height="105" width="130" x="430" y="495" as="geometry" />
+        </mxCell>
+        <mxCell id="flow1" edge="1" parent="1" source="scraping" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6B7280;endArrow=block;endFill=1;fontSize=11;" target="raw-s3" value="cotacoes diarias">
+          <mxGeometry relative="1" x="-0.1574" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="flow2" edge="1" parent="1" source="raw-s3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6B7280;endArrow=block;endFill=1;fontSize=11;" target="event" value="novo objeto em raw/">
+          <mxGeometry relative="1" x="0.2" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="flow3" edge="1" parent="1" source="event" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6B7280;endArrow=block;endFill=1;fontSize=11;" target="lambda" value="disparo">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="flow4" edge="1" parent="1" source="lambda" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6B7280;endArrow=block;endFill=1;fontSize=11;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="glue" value="">
+          <mxGeometry relative="1" x="0.1111" y="75" as="geometry">
+            <mxPoint x="1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="flow5" edge="1" parent="1" source="glue" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6B7280;endArrow=block;endFill=1;fontSize=11;" target="refined-s3" value="grava refined/">
+          <mxGeometry relative="1" x="-0.4615" as="geometry">
+            <mxPoint y="1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="flow6" edge="1" parent="1" source="glue" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6B7280;endArrow=block;endFill=1;fontSize=11;" target="catalog" value="atualiza catalogo">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="flow7" edge="1" parent="1" source="catalog" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6B7280;endArrow=block;endFill=1;fontSize=11;" target="athena" value="SQL">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="flow8" edge="1" parent="1" source="refined-s3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#9CA3AF;dashed=1;endArrow=open;endFill=0;fontSize=11;exitX=0;exitY=0.25;exitDx=0;exitDy=0;" target="catalog" value="usa como fonte">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="notes-title" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D1D5DB;fontStyle=1;fontSize=13;fontColor=#111827;" value="Transformacoes no Glue" vertex="1">
+          <mxGeometry height="30" width="170" x="1080" y="670" as="geometry" />
+        </mxCell>
+        <mxCell id="notes-content" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D1D5DB;fontSize=12;align=left;spacingLeft=10;spacingTop=8;" value="A. Agregacao diaria por ticker&#xa;B. open -&gt; opening_price&#xa;   close -&gt; closing_price&#xa;C. prev_close, daily_return_pct, ma7_close" vertex="1">
+          <mxGeometry height="100" width="290" x="1080" y="700" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

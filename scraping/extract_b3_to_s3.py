@@ -51,7 +51,7 @@ def download_daily_batched(
     session: Optional[Any] = None,
 ) -> pd.DataFrame:
     """
-    Baixa um período curto (ex.: 10 dias) e pega o último pregão disponível por ticker.
+    Baixa um período curto (ex.: 5 dias) e pega o último pregão disponível por ticker.
     Isso evita falhar em fins de semana/feriados.
     """
     if batch_size <= 0:
